@@ -1,0 +1,61 @@
+rm(list=ls())
+library(Seurat)
+library(ggplot2)
+library(cowplot)
+library(patchwork)
+library(dplyr)
+library(clustree)
+library(sctransform)
+library(hdf5r)
+library(tibble)
+wheat.all<- readRDS(file = "/Volumes/A/DOE2022CS/ST/wheatcs_all9_clustering.rds") 
+wheat.all<- PrepSCTFindMarkers(object = wheat.all)
+
+#############find different expression genes between samples
+Idents(wheat.all) <- "newsample" 
+# DEGs in 15 DAP
+DEGs15 <- FindMarkers(wheat.all, ident.1 = "S15D_CK", ident.2 = "S15D_HT",verbose = FALSE)
+DefaultAssay(wheat.all) <- "SCT"
+FeaturePlot(wheat.all, features = c("TraesCS5D03G0658800", "TraesCS4A03G1096300", "TraesCS1D03G0643600", "TraesCS2A03G0151500"), split.by = "newsample", max.cutoff = 3, 
+            cols = c("grey", "red"))
+write.table(DEGs15, file ="DEGs15.csv", sep =",", row.names =TRUE, col.names =TRUE, quote =TRUE)
+# DEGs in 20 DAP
+DEGs20 <- FindMarkers(wheat.all, ident.1 = "S20D_CK", ident.2 = "S20D_HT",verbose = FALSE)
+DefaultAssay(wheat.all) <- "SCT"
+FeaturePlot(wheat.all, features = c("TraesCS5D03G0658800", "TraesCS4A03G1096300", "TraesCS1D03G0643600", "TraesCS2A03G0151500"), split.by = "newsample", max.cutoff = 3, 
+            cols = c("grey", "red"))
+write.table(DEGs15, file ="DEGs20.csv", sep =",", row.names =TRUE, col.names =TRUE, quote =TRUE)
+# DEGs in 30 DAP
+DEGs30 <- FindMarkers(wheat.all, ident.1 = "S30D_CK", ident.2 = "S30D_HT",verbose = FALSE)
+DefaultAssay(wheat.all) <- "SCT"
+FeaturePlot(wheat.all, features = c("TraesCS5D03G0658800", "TraesCS4A03G1096300", "TraesCS1D03G0643600", "TraesCS2A03G0151500"), split.by = "newsample", max.cutoff = 3, 
+            cols = c("grey", "red"))
+write.table(DEGs30, file ="DEGs15.csv", sep =",", row.names =TRUE, col.names =TRUE, quote =TRUE)
+##Three ways of visual expression of DEGs
+FeaturePlot(wheat.all, features = c("TraesCS4A03G1157700"), split.by = "newsample",min.cutoff = "q9")
+SpatialFeaturePlot(wheat.all, features = c("TraesCS4A03G1157700"))
+VlnPlot(wheat.all,features = c("TraesCS4A03G1157700"),group.by = "celltype",pt.size = 0,ncol = 1)
+
+###check the quantity of different expression genes between samples
+library(ggplot2)
+library(cowplot)
+theme_set(theme_cowplot())
+
+#draw scatter plot
+DPA15<-ggplot(data=aveCounts2,
+              mapping=aes(x = S15D_CK, y = S15D_HT))+
+  geom_point(color="#BADE6C")+
+  geom_smooth(method='gam',formula=y ~ s(x, bs = "cs"),color="#A6A6A6")+
+  labs(title="DEGs of 15D_CK and 15D_HT", x="S15D_CK", y="S15D_HT")
+DPA20<-ggplot(data=aveCounts2,
+              mapping=aes(x = S20D_CK, y = S20D_HT))+
+  geom_point(color="#A3CF13")+
+  geom_smooth(method='gam',formula=y ~ s(x, bs = "cs"),color="#A6A6A6")+
+  labs(title="DEGs of 20D_CK and 15D_HT", x="S20D_CK", y="S20D_HT")
+DPA30<-ggplot(data=aveCounts2,
+              mapping=aes(x = S30D_CK, y = S30D_HT))+
+  geom_point(color="#FFD579")+
+  geom_smooth(method='gam',formula=y ~ s(x, bs = "cs"),color="#A6A6A6")+
+  labs(title="DEGs of 30D_CK and 3DD_HT", x="S30D_CK", y="S30D_HT")
+DPA15+DPA20+DPA30
+ggsave(DPA15+DPA20+DPA30 ,filename = "DEGs scatter plot_152030.pdf",width = 12,height = 5)
