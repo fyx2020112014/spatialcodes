@@ -1,0 +1,45 @@
+rm(list=ls())
+library(Seurat)
+library(ggplot2)
+library(cowplot)
+library(patchwork)
+library(dplyr)
+library(clustree)
+library(sctransform)
+library(hdf5r)
+library(tibble)
+wheat.all<- readRDS(file = "/Volumes/A/DOE2022CS/ST/wheatcs_all9_clustering.rds")
+#create new object:celltype.sample
+table(wheat.all@meta.data$newsample) 
+#S10D_CK S15D_CK S15D_HT    S17D S20D_CK S20D_HT S30D_CK S30D_HT  S5D  
+#2452    2722    2971     718    2351    3076    2737    2864    1727 
+Idents(wheat.all)<-"celltype"
+wheat.all$celltype <- Idents(wheat.all) 
+head(wheat.all$celltype) #AAACAGAGCGACTCCT-1_1 EAS
+wheat.all$celltype.sample <- paste(Idents(wheat.all), wheat.all$newsample, sep = "_") 
+tail(wheat.all$celltype.sample) #TTGTGGTGGTACTAAG-1_8 "PR_S17D"
+head(wheat.all@meta.data) 
+saveRDS(wheat.all, file = "/Volumes/A/DOE2022CS/ST/wheatcs_all9_clustering.rds")
+
+###calculate average gene expression in each sample
+Idents(wheat.all) <- "newsample"
+levels(x=wheat.all)
+aveCounts1 <- data.frame(log1p(AverageExpression(wheat.all, verbose = FALSE)$SCT))
+aveCounts1 ["TraesCS2B03G1110200",]
+write.table (aveCounts2, file ="ave_exp_log.csv", sep =",", row.names =TRUE, col.names =TRUE, quote =TRUE)
+
+###calculate average gene expression in each celltype
+Idents(wheat.all) <- "celltype"
+levels(x=wheat.all)
+aveCounts2 <- data.frame(log1p(AverageExpression(wheat.all, verbose = FALSE)$SCT))
+aveCounts2 ["TraesCS2B03G1110200",]
+write.table (aveCounts2, file ="ave_celltype_log.csv", sep =",", row.names =TRUE, col.names =TRUE, quote =TRUE)
+
+###calculate average gene expression of each celltype in each sample
+Idents(wheat.all) <- "celltype.sample"
+levels(x=wheat.all)
+#log1p = log（x+1） 
+aveCounts3 <- data.frame(log1p(AverageExpression(wheat.all, verbose = FALSE)$SCT))
+aveCounts3 ["TraesCS2B03G1110200",]
+write.table(aveCounts3, file ="ave_cellsample_log.csv", sep =",", row.names =TRUE, col.names =TRUE, quote =TRUE)
+
