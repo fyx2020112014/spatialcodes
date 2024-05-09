@@ -1,0 +1,77 @@
+library(Seurat)
+library(ggplot2)
+library(cowplot)
+library(patchwork)
+library(dplyr)
+library(hdf5r)
+library(tibble)
+###pseudotime analysis-----Run on the server
+suppressMessages({
+  suppressWarnings({library(Seurat)
+    library(monocle)})})
+library(dplyr)
+packageVersion('monocle')
+EN<- readRDS(file = "develop_en.rds") 
+---------------------------
+#count data、celltype data、gene annotation data
+data <- as(as.matrix(EN6@assays$Spatial@counts), 'sparseMatrix') 
+cell_metadata  <- data.frame(group = EN6[['newsample']],clusters = Idents(EN6))
+gene_annotation <- data.frame(gene_short_name = rownames(data), row.names = row.names(data),stringsAsFactors = F) 
+rownames(gene_annotation) <- rownames(data)
+---------------------------
+#####create CellDataSet object
+pd <- new("AnnotatedDataFrame", data = cell_metadata) 
+fd <- new("AnnotatedDataFrame", data = gene_annotation)
+# create monocle object
+cds <- newCellDataSet(data,
+                      phenoData = pd,
+                      featureData = fd,
+                      expressionFamily=negbinomial.size())
+saveRDS(cds,"/home/yxfu/endosperm trajactory/ENcds.rds")
+--------------------
+cds <- estimateSizeFactors(cds)
+cds <- estimateDispersions(cds, cores=10, relative_expr = TRUE)
+disp_table <- dispersionTable(cds)
+disp.genes <-subset(disp_table, mean_expression >= 0.1)$gene_id
+length(disp.gene)
+diff_test_res <- differentialGeneTest(cds[disp.genes,],
+                                      fullModelFormulaStr = "~clusters")
+disp.genes[1:5]
+diff_test_res[1:4,1:5]
+write.table(diff_test_res, file ="/home/yxfu/endosperm trajactory/diff_test_res_clusters.csv", sep =",", row.names =TRUE, col.names =TRUE, quote =TRUE)
+ordering_genes <- row.names (subset(diff_test_res, qval < 0.01))
+length(ordering_genes) #5479
+cds <- setOrderingFilter(cds, ordering_genes)
+plot_ordering_genes(cds)
+ggsave(file="/home/yxfu/endosperm trajactory/order_V2.pdf",width = 7,height = 5)
+saveRDS(cds,"/home/yxfu/endosperm trajactory/V2_en_cds.rds") #保存
+--------------------
+#import celltype marker genes for 'setOrderingFilter'
+markers<-read.csv(file ="/home/yxfu/endosperm trajactory/en_pseudotime_markers.csv", sep =",")
+markers[1:4,1:4]
+disp.genes <- subset(markers, p_val < 0.05)$gene
+cds <- setOrderingFilter(cds, markers)
+plot_ordering_genes(cds)
+ggsave(file="order18.pdf",width = 7,height = 5)
+--------------------
+cds <- reduceDimension(cds, max_components = 2, num_dim=6,method = 'DDRTree')
+suppressWarnings(cds <- orderCells(cds))
+plot_cell_trajectory(cds, color_by = "clusters")
+ggsave(file="/home/yxfu/endosperm trajactory/V2_pseudo_celltype.pdf",width = 5,height = 5)
+--------------------
+###visualization of cell_trajectory
+plot_cell_trajectory(cds, color_by = "clusters")|
+  plot_cell_trajectory(cds, color_by = "State")|
+  plot_cell_trajectory(cds, color_by = "Pseudotime")
+ggsave(file="/home/yxfu/endosperm trajactory/V2_combine_pseudo.pdf",width = 15,height = 6)
+#color by cluster
+plot_cell_trajectory(cds, color_by = "clusters") +facet_wrap(~clusters, nrow = 1)+scale_color_manual(values = colour)
+ggsave(file="/home/yxfu/endosperm trajactory/V2_state_combine_pseudo.pdf",width = 12,height = 5)
+library(ggpubr)
+df <- pData(cds)
+write.table(df, file ="/home/yxfu/endosperm trajactory/V2_cds.csv", sep =",", row.names =TRUE, col.names =TRUE, quote =TRUE)
+--------------------
+#visualization of genes_in_pseudotime
+cds_subset1 <- cds[c("TraesCS3A03G0109000","TraesCS5B03G0908600","TraesCS7D03G0389500","TraesCS1B03G0280400","TraesCS5D03G0905600","TraesCS2B03G1192800")]
+plot_genes_in_pseudotime(cds_subset1, color_by = "clusters",ncol=3)+scale_color_manual(values = colour)
+ggsave(file="/home/yxfu/endosperm trajactory/测试2_seudogenes.pdf",width = 12,height = 6)
