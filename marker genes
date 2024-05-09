@@ -1,0 +1,19 @@
+rm(list=ls())
+library(Seurat)
+library(ggplot2)
+library(cowplot)
+library(patchwork)
+library(dplyr)
+library(clustree)
+library(sctransform)
+library(hdf5r)
+library(tibble)
+wheat.all<- readRDS(file = "/Volumes/A/DOE2022CS/ST/wheatcs_all9_clustering.rds") 
+#find marker genes in each celltype
+wheat.all<- PrepSCTFindMarkers(object = wheat.all)
+saveRDS(wheat.all,file = "/Volumes/A/DOE2022CS/ST/wheatcs_all9_clustering_pre.rds")
+Idents(wheat.all)<-"celltype"
+allmarkers <- FindAllMarkers(wheat.all, only.pos = FALSE, min.pct = 0.25, logfc.threshold = 0.25,test.use = "wilcox")
+head(data.markers,5)
+write.table (allmarkers, file ="sample9markers.csv", sep =",", row.names =T, col.names =TRUE, quote =TRUE)
+
