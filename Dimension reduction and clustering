@@ -1,0 +1,85 @@
+rm(list=ls())
+library(Seurat)
+library(ggplot2)
+library(cowplot)
+library(patchwork)
+library(dplyr)
+library(clustree)
+library(sctransform)
+library(hdf5r)
+library(tibble)
+#open an integrated file of eight slides(7G)
+wheat.all<- readRDS(file = "/Volumes/A/DOE2022CS/ST/wheatcs_all9_SCT.rds") 
+##################Dimension reduction, clustering, and visualization 
+wheat.all <- RunPCA(wheat.all, verbose=FALSE)
+wheat.all <- RunUMAP(wheat.all, reduction = "pca", dims = 1:40)
+p1 <- DimPlot(wheat.all, reduction = "umap",pt.size = 0.5, label = TRUE)
+p1
+#Check the clustering effect
+# pca effect
+VizDimLoadings(wheat.all, dims = 1:4, reduction = "pca") #散点
+DimPlot(wheat.all, dims = 2:3,reduction = "pca")
+# method 1
+DimHeatmap(wheat.all, dims = 1:20, cells = 500, balanced = TRUE)
+# method 2
+ElbowPlot(wheat.all, ndims = 40, reduction = "pca")
+
+wheat.all <- FindNeighbors(wheat.all, dims = 1:33)
+wheat.all <- FindClusters(wheat.all, resolution=seq(1.1,2.8,by=0.4))
+clustree(wheat.all)
+wheat.all<- FindClusters(wheat.all,resolution=1.7,verbose = FALSE)
+SpatialDimPlot(wheat.all, label = TRUE, alpha =c(1, 1),label.size = 2,images="S10D_CK")
+SpatialDimPlot(wheat.all, label = TRUE, alpha =c(1, 1),label.size = 2,images="S30D_CK")
+SpatialDimPlot(wheat.all, label = TRUE, alpha =c(1, 1),label.size = 2,images="S30D_HT")
+#Visualization
+p1 <- DimPlot(wheat.all, reduction = "umap", label = TRUE,group.by = "integrated_snn_res.1.7")
+p2 <- DimPlot(wheat.all, reduction = "umap", label = TRUE, group.by = "S10D_CK",repel = TRUE)
+p1 + p2
+
+# Highlight specific clusters
+cells2hightlight= CellsByIdentities(wheat.all, 
+                                    idents = c(24,3,8))
+SpatialDimPlot(wheat.all, 
+               cells.highlight = cells2hightlight,
+               facet.highlight = T,images="S20D_HT")
+
+
+wheat.all <- RenameIdents(wheat.all, `4` = "EC")
+wheat.all <- RenameIdents(wheat.all, `8` = "EAS")
+#Merge multiple clusters
+#Gets the clusters name of wheat.all
+levels(wheat.all)
+EN<- subset(wheat.all, idents = c(0,2,3,6,9,10,11,15,18,24,26,17,36,38))
+EXC <- subset(wheat.all, idents = c(7,21,31,20))
+MEC<- subset(wheat.all, idents = c(7,29)) 
+AL <- subset(wheat.all, idents = c(16,28)) 
+ETC <- subset(wheat.all, idents = c(12,14,27,30,33)) 
+SCU <- subset(wheat.all, idents = c(5,13,22,23,35))
+PR <- subset(wheat.all, idents = c(19,32))
+ENC <- subset(wheat.all, idents = c(1,25))
+NP <- subset(wheat.all, idents = c(34,37))
+
+
+Idents(object = wheat.all, cells = Cells(EN)) <- "EN"
+Idents(object = wheat.all, cells = Cells(EXC)) <- "EXC"
+Idents(object = wheat.all, cells = Cells(MEC)) <- "MEC"
+Idents(object = wheat.all, cells = Cells(AL)) <- "AL"
+Idents(object = wheat.all, cells = Cells(ETC)) <- "ETC"
+Idents(object = wheat.all, cells = Cells(SCU)) <- "SCU"
+Idents(object = wheat.all, cells = Cells(PR)) <- "PR"
+Idents(object = wheat.all, cells = Cells(ENC)) <- "ENC"
+Idents(object = wheat.all, cells = Cells(NP)) <- "NP"
+
+
+cols2 <- c("#B4B6A9","#C3C3B6","#BDC6A4","#A5CC0E","#949A67","#5C9835","#F6B916","#E9E62B","#A3CB10","#7FB630","#EEF0CD")
+names(cols2) <- c("EXC","MEC","ENC","ETC","EC","NP","PR","SCU","EAS","AL","EN")
+SpatialDimPlot(wheat.all, label = TRUE, cols=cols2,alpha =c(1, 1),label.size = 3,images="S15D_CK") 
+table(Idents(wheat.all)) #check the clusters and the number of clusters
+head(wheat.all$seurat_clusters,5) #check the Seurat object
+SpatialFeaturePlot(wheat.all, features = c("TraesCS7D03G0222300")) #view the gene expression
+SpatialDimPlot(wheat.all, images = c("S5D_CK"),interactive = TRUE)
+############ Draw the final partition diagram
+DimPlot(wheat.all, reduction = "umap", label = TRUE)
+DimPlot(wheat.all, reduction = "umap", cols=cols2,label = TRUE,group.by = "celltype")
+saveRDS(wheat.all,file = "/Volumes/A/DOE2022CS/ST/wheatcs_all9_clustering.rds")
+
