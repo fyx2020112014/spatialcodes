@@ -11,7 +11,31 @@ library(tibble)
 wheat.all<- readRDS(file = "/Volumes/A/DOE2022CS/ST/wheatcs_all9_clustering.rds") 
 wheat.all<- PrepSCTFindMarkers(object = wheat.all)
 
-#############find different expression genes between samples
+###check the quantity of different expression genes between samples
+library(ggplot2)
+library(cowplot)
+theme_set(theme_cowplot())
+
+#draw scatter plot
+DPA15<-ggplot(data=aveCounts2,
+              mapping=aes(x = S15D_CK, y = S15D_HT))+
+  geom_point(color="#BADE6C")+
+  geom_smooth(method='gam',formula=y ~ s(x, bs = "cs"),color="#A6A6A6")+
+  labs(title="DEGs of 15D_CK and 15D_HT", x="S15D_CK", y="S15D_HT")
+DPA20<-ggplot(data=aveCounts2,
+              mapping=aes(x = S20D_CK, y = S20D_HT))+
+  geom_point(color="#A3CF13")+
+  geom_smooth(method='gam',formula=y ~ s(x, bs = "cs"),color="#A6A6A6")+
+  labs(title="DEGs of 20D_CK and 15D_HT", x="S20D_CK", y="S20D_HT")
+DPA30<-ggplot(data=aveCounts2,
+              mapping=aes(x = S30D_CK, y = S30D_HT))+
+  geom_point(color="#FFD579")+
+  geom_smooth(method='gam',formula=y ~ s(x, bs = "cs"),color="#A6A6A6")+
+  labs(title="DEGs of 30D_CK and 3DD_HT", x="S30D_CK", y="S30D_HT")
+DPA15+DPA20+DPA30
+ggsave(DPA15+DPA20+DPA30 ,filename = "DEGs scatter plot_152030.pdf",width = 12,height = 5)
+
+########find different expression genes between samples
 Idents(wheat.all) <- "newsample" 
 # DEGs in 15 DAP
 DEGs15 <- FindMarkers(wheat.all, ident.1 = "S15D_CK", ident.2 = "S15D_HT",verbose = FALSE)
@@ -36,26 +60,22 @@ FeaturePlot(wheat.all, features = c("TraesCS4A03G1157700"), split.by = "newsampl
 SpatialFeaturePlot(wheat.all, features = c("TraesCS4A03G1157700"))
 VlnPlot(wheat.all,features = c("TraesCS4A03G1157700"),group.by = "celltype",pt.size = 0,ncol = 1)
 
-###check the quantity of different expression genes between samples
-library(ggplot2)
-library(cowplot)
-theme_set(theme_cowplot())
+#########find DEGs in distinct celltype betweeen normal grain and recovery grain
+# e.g. find DEGs of ETC between 15D_CK and 15D_HT
+Idents(wheat.all)<-"celltype.sample"
+DEGsETC = FindMarkers(wheat.all,ident.1 = 'ETC_S15D_CK',
+                       ident.2 = 'ETC_S15D_HT',
+                       logfc.threshold = 0,
+                       min.pct = 0)
+write.table (DEGsETC, file ="ETCgenes.csv", sep =",", row.names =TRUE, col.names =TRUE, quote =TRUE)
+SpatialFeaturePlot(wheat.all, features = c("TraesCS7A03G0059500","TraesCS5A03G1021000"),images = c("S15D_CK","S15D_HT"))
 
-#draw scatter plot
-DPA15<-ggplot(data=aveCounts2,
-              mapping=aes(x = S15D_CK, y = S15D_HT))+
-  geom_point(color="#BADE6C")+
-  geom_smooth(method='gam',formula=y ~ s(x, bs = "cs"),color="#A6A6A6")+
-  labs(title="DEGs of 15D_CK and 15D_HT", x="S15D_CK", y="S15D_HT")
-DPA20<-ggplot(data=aveCounts2,
-              mapping=aes(x = S20D_CK, y = S20D_HT))+
-  geom_point(color="#A3CF13")+
-  geom_smooth(method='gam',formula=y ~ s(x, bs = "cs"),color="#A6A6A6")+
-  labs(title="DEGs of 20D_CK and 15D_HT", x="S20D_CK", y="S20D_HT")
-DPA30<-ggplot(data=aveCounts2,
-              mapping=aes(x = S30D_CK, y = S30D_HT))+
-  geom_point(color="#FFD579")+
-  geom_smooth(method='gam',formula=y ~ s(x, bs = "cs"),color="#A6A6A6")+
-  labs(title="DEGs of 30D_CK and 3DD_HT", x="S30D_CK", y="S30D_HT")
-DPA15+DPA20+DPA30
-ggsave(DPA15+DPA20+DPA30 ,filename = "DEGs scatter plot_152030.pdf",width = 12,height = 5)
+####automatically calculate DEGs of distinct celltype betweeen normal grain and recovery grain by cycling
+Idents(wheat.all)<-"celltype.sample"
+cellfordeg<-levels(wheat.all$celltype)
+for(i in 1:length(cellfordeg)){
+  CELLDEG <- FindMarkers(wheat.all, ident.1 = paste0(cellfordeg[i],"_S15D_CK"), ident.2 = paste0(cellfordeg[i],"_S15D_HT"), verbose = FALSE)
+  write.csv(CELLDEG,paste0(cellfordeg[i],".CSV"))
+}
+list.files()
+
