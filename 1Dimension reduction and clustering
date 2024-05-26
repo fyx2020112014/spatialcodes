@@ -91,5 +91,16 @@ DimPlot(wheat.all, reduction = "umap", label = TRUE)
 wheat.all$celltype <- Idents(wheat.all)
 Idents(wheat.all)<-"celltype"
 DimPlot(wheat.all, reduction = "umap", cols=cols2,label = TRUE,group.by = "celltype")
-saveRDS(wheat.all,file = "/Volumes/A/DOE2022CS/ST/wheatcs_all9_clustering.rds")
+-----------------------------
+#create new object in meta.data:celltype.sample
+table(wheat.all@meta.data$newsample) 
+#S10D_CK S15D_CK S15D_HT    S17D S20D_CK S20D_HT S30D_CK S30D_HT  S5D  
+#2452    2722    2971     718    2351    3076    2737    2864    1727 
+Idents(wheat.all)<-"celltype"
+wheat.all$celltype <- Idents(wheat.all) 
+head(wheat.all$celltype) #AAACAGAGCGACTCCT-1_1 EAS
+wheat.all$celltype.sample <- paste(Idents(wheat.all), wheat.all$newsample, sep = "_") 
+tail(wheat.all$celltype.sample) #TTGTGGTGGTACTAAG-1_8 "PR_S17D"
+head(wheat.all@meta.data) 
+saveRDS(wheat.all, file = "/Volumes/A/DOE2022CS/ST/wheatcs_all9_clustering.rds")
 
